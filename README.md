@@ -3,8 +3,6 @@
 A retrieval-augmented medical chatbot that answers questions using curated PDF sources.
 
 ## Screenshot
-Save the UI screenshot as `assets/ui.png` to render below.
-
 ![UI Screenshot](assets/ui.png)
 
 ## Features

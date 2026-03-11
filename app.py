@@ -14,6 +14,7 @@ import os
 import json
 from pathlib import Path
 from collections import OrderedDict
+import re
 
 app = Flask(__name__)
 load_dotenv()
@@ -102,6 +103,20 @@ def retrieve_docs(query: str):
     # Fetch relevant documents from the retriever
     return retriever.invoke(query) if hasattr(retriever, "invoke") else retriever.get_relevant_documents(query)
 
+def format_answer(text: str, max_sentences: int = 2, max_bullets: int = 3) -> str:
+    # Normalize to short sentences or short bullet list
+    cleaned = " ".join(text.strip().split())
+    if not cleaned:
+        return ""
+    cleaned = re.sub(r"\s*•\s*", "\n- ", cleaned)
+    cleaned = re.sub(r"\s*(\d+)\.\s+", "\n- ", cleaned)
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    bullet_lines = [line for line in lines if line.startswith("-")]
+    if bullet_lines:
+        return "\n".join(bullet_lines[:max_bullets])
+    sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+    return " ".join(sentences[:max_sentences])
+
 
 @app.route("/")
 def index():
@@ -121,7 +136,7 @@ def chat():
     docs = retrieve_docs(msg)
     answer = question_answer_chain.invoke({"input": msg, "context": docs})
     print("Response : ", answer)
-    answer_text = str(answer)
+    answer_text = format_answer(str(answer))
     set_cached_response(msg, answer_text)
     return jsonify({"answer": answer_text})
 
@@ -150,7 +165,9 @@ def stream():
             if token:
                 answer_text += token
                 yield json.dumps({"type": "token", "content": token}) + "\n"
-        set_cached_response(msg, answer_text)
+        formatted = format_answer(answer_text)
+        set_cached_response(msg, formatted)
+        yield json.dumps({"type": "final", "content": formatted}) + "\n"
         yield json.dumps({"type": "done"}) + "\n"
 
     return Response(stream_with_context(generate()), mimetype="application/x-ndjson")

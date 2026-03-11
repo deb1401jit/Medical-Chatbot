@@ -124,6 +124,10 @@
 									answerEl.textContent = answerText;
 									scrollToBottom();
 								}
+								if (payload.type === "final") {
+									answerEl.textContent = payload.content || answerText;
+									scrollToBottom();
+								}
 							}
 						}
 					} catch (error) {
